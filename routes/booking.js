@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import express from "express";
 import Booking from "../model/Booking.js";
 import fetchuser from "../middleware/fetchuser.js";
-import { contactus } from "./sendmail.js";
+import { bookingmail } from "./sendmail.js";
 
 dotenv.config();
 
@@ -26,8 +26,6 @@ const months = [
 
 // Route 1 : Book the slot using : POST "/user/booking/slotbooking"
 router.post("/slotbooking", fetchuser, async (req, res) => {
-  let success = false;
-
   const date = new Date();
   const currDate =
     date.getDate() + " " + months[date.getMonth()] + ", " + date.getFullYear();
@@ -41,21 +39,44 @@ router.post("/slotbooking", fetchuser, async (req, res) => {
       bookingdate: req.body.bookingdate,
       timeslot: req.body.timeslot,
       eventname: req.body.eventname,
+      prize: req.body.prize,
       currdate: currDate,
     });
 
-    contactus(req, res);
-
-    // success = true;
-
-    // return res.status(200).json({ success, message: "Date has been booked successfully" });
+    bookingmail(req, res);
   } catch (err) {
     console.log(err.message);
     res.status(500).send({ message: "Internal server error occured." });
   }
 });
 
-// Route 2 : Get all the slot using : POST "/user/booking/getslots"
+// Route 2 : Get all the slot for admin using : POST "/user/booking/getslots"
+router.get("/admin/getslots", fetchuser, async (req, res) => {
+  let success = false;
+  if (req.user.type !== "admin") {
+    return res
+      .status(500)
+      .json({ success: false, message: "You are not an Admin!" });
+  }
+  try {
+    const slots = await Booking.find();
+
+    const date = new Date();
+
+    let data = await slots.filter((data) => {
+      return data.bookingdate > date.getTime();
+    });
+
+    success = true;
+
+    return res.status(200).json({ success, data: data });
+  } catch (err) {
+    console.log(err.message);
+    res.status(500).send({ message: "Internal server error occured." });
+  }
+});
+
+// Route 3 : Get all the slot using : POST "/user/booking/getslots"
 router.get("/getslots", async (req, res) => {
   let success = false;
   try {
@@ -79,7 +100,7 @@ router.get("/getslots", async (req, res) => {
   }
 });
 
-// Route 3 : Get slot booking by the user using : POST "/user/booking/myslot"
+// Route 4 : Get slot booking by the user using : POST "/user/booking/myslot"
 router.get("/myslot", fetchuser, async (req, res) => {
   let success = false;
   try {

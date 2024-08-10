@@ -42,6 +42,10 @@ const BookingSchema = new Schema({
     type: String,
     required: true,
   },
+  prize: {
+    type: String,
+    required: true,
+  },
 });
 
 const Booking = mongoose.model("booking", BookingSchema);
