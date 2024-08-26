@@ -15,7 +15,6 @@ const transporter = nodemailer.createTransport({
 
 async function sendOTP(req, res) {
   const otp = `${Math.floor(1000 + Math.random() * 9000)}`;
-  console.log("OTP is :  ", otp);
 
   const optGeneration = {
     from: "shutterpicsstudio@gmail.com",

@@ -45,7 +45,6 @@ router.post("/slotbooking", fetchuser, async (req, res) => {
 
     bookingmail(req, res);
   } catch (err) {
-    console.log(err.message);
     res.status(500).send({ message: "Internal server error occured." });
   }
 });
@@ -71,7 +70,6 @@ router.get("/admin/getslots", fetchuser, async (req, res) => {
 
     return res.status(200).json({ success, data: data });
   } catch (err) {
-    console.log(err.message);
     res.status(500).send({ message: "Internal server error occured." });
   }
 });
@@ -95,7 +93,6 @@ router.get("/getslots", async (req, res) => {
 
     return res.status(200).json({ success, data: data });
   } catch (err) {
-    console.log(err.message);
     res.status(500).send({ message: "Internal server error occured." });
   }
 });
@@ -114,7 +111,6 @@ router.get("/myslot", fetchuser, async (req, res) => {
     success = true;
     return res.status(200).json({ success, data: slots });
   } catch (err) {
-    console.log(err.message);
     res.status(500).send({ message: "Internal server error occured." });
   }
 });

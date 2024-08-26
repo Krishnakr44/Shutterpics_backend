@@ -25,12 +25,10 @@ router.post("/createuser", async (req, res) => {
     // check whether the user with the email exists already.
     let user = await User.findOne({ email: req.body.email });
     if (user && user.isverified) {
-      return res
-        .status(400)
-        .json({
-          success,
-          message: "Sorry a user with this email already exists",
-        });
+      return res.status(400).json({
+        success,
+        message: "Sorry a user with this email already exists",
+      });
     } else if (user && !user.isverified) {
       const newUser = {
         password: secPass,
@@ -54,7 +52,6 @@ router.post("/createuser", async (req, res) => {
 
     sendOTP(req, res);
   } catch (err) {
-    console.log(err.message);
     res.status(500).send("Internal server error occured.");
   }
 });
@@ -98,7 +95,6 @@ router.post("/loginuser", async (req, res) => {
       message: "User loged in successfully",
     });
   } catch (err) {
-    console.log(err.message);
     res.status(500).send("Internal server error occured.");
   }
 });
@@ -157,24 +153,19 @@ router.post("/verifyotp", async (req, res) => {
 
       const authtoken = jwt.sign(data, JWT_SECRET);
       success = true;
-      return res
-        .status(200)
-        .json({
-          success,
-          authtoken,
-          type: user.type,
-          message: "OTP Verified Successfully!",
-        });
+      return res.status(200).json({
+        success,
+        authtoken,
+        type: user.type,
+        message: "OTP Verified Successfully!",
+      });
     } else {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Time limit exceed. Please try again.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Time limit exceed. Please try again.",
+      });
     }
   } catch (err) {
-    console.log(err.message);
     res.status(500).send("Internal server error occured.");
   }
 });
@@ -190,7 +181,6 @@ router.post("/request/resetpassword", async (req, res) => {
 
     sendOTP(req, res);
   } catch (err) {
-    console.log(err.message);
     res.status(500).send({ message: "Internal server error occured." });
   }
 });
@@ -240,24 +230,19 @@ router.post("/resetpassword", async (req, res) => {
 
       const authtoken = jwt.sign(data, JWT_SECRET);
       success = true;
-      return res
-        .status(200)
-        .json({
-          success,
-          authtoken,
-          type: user.type,
-          message: "Password has been reset successfully!",
-        });
+      return res.status(200).json({
+        success,
+        authtoken,
+        type: user.type,
+        message: "Password has been reset successfully!",
+      });
     } else {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Time limit exceed. Please try again.",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Time limit exceed. Please try again.",
+      });
     }
   } catch (err) {
-    console.log(err.message);
     res.status(500).send("Internal server error occured.");
   }
 });
@@ -277,7 +262,6 @@ router.get("/getuser", fetchuser, async (req, res) => {
 
     return res.status(200).json({ success, data: customer });
   } catch (err) {
-    console.log(err.message);
     res.status(500).send({ message: "Internal server error occured." });
   }
 });
