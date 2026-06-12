@@ -3,11 +3,12 @@ import express from "express";
 import Booking from "../model/Booking.js";
 import fetchuser from "../middleware/fetchuser.js";
 import { bookingmail } from "./sendmail.js";
+import validate from "../middleware/validate.js";
+import { slotBookingRules } from "../middleware/validators.js";
 
 dotenv.config();
 
 const router = express.Router();
-// const JWT_SECRET = process.env.JWT_SECRET;
 
 const months = [
   "January",
@@ -24,94 +25,89 @@ const months = [
   "December",
 ];
 
+const getFutureBookings = () => {
+  return Booking.find({ bookingdate: { $gt: new Date() } });
+};
+
 // Route 1 : Book the slot using : POST "/user/booking/slotbooking"
-router.post("/slotbooking", fetchuser, async (req, res) => {
-  const date = new Date();
-  const currDate =
-    date.getDate() + " " + months[date.getMonth()] + ", " + date.getFullYear();
+router.post(
+  "/slotbooking",
+  fetchuser,
+  slotBookingRules,
+  validate,
+  async (req, res) => {
+    const date = new Date();
+    const currDate =
+      date.getDate() +
+      " " +
+      months[date.getMonth()] +
+      ", " +
+      date.getFullYear();
 
-  try {
-    await Booking.create({
-      userId: req.user.id,
-      name: req.body.name,
-      contactnum: req.body.contactnum,
-      address: req.body.address,
-      bookingdate: req.body.bookingdate,
-      timeslot: req.body.timeslot,
-      eventname: req.body.eventname,
-      prize: req.body.prize,
-      currdate: currDate,
-    });
+    try {
+      await Booking.create({
+        userId: req.user.id,
+        name: req.body.name,
+        contactnum: req.body.contactnum,
+        address: req.body.address,
+        bookingdate: req.body.bookingdate,
+        timeslot: req.body.timeslot,
+        eventname: req.body.eventname,
+        prize: req.body.prize,
+        currdate: currDate,
+      });
 
-    bookingmail(req, res);
-  } catch (err) {
-    res.status(500).send({ message: "Internal server error occured." });
+      bookingmail(req, res);
+    } catch (err) {
+      res.status(500).json({ message: "Internal server error occurred." });
+    }
   }
-});
+);
 
-// Route 2 : Get all the slot for admin using : POST "/user/booking/getslots"
+// Route 2 : Get all the slot for admin using : GET "/user/booking/admin/getslots"
 router.get("/admin/getslots", fetchuser, async (req, res) => {
   let success = false;
   if (req.user.type !== "admin") {
     return res
-      .status(500)
+      .status(403)
       .json({ success: false, message: "You are not an Admin!" });
   }
   try {
-    const slots = await Booking.find();
-
-    const date = new Date();
-
-    let data = await slots.filter((data) => {
-      return data.bookingdate > date.getTime();
-    });
-
+    const data = await getFutureBookings();
     success = true;
 
-    return res.status(200).json({ success, data: data });
+    return res.status(200).json({ success, data });
   } catch (err) {
-    res.status(500).send({ message: "Internal server error occured." });
+    res.status(500).json({ message: "Internal server error occurred." });
   }
 });
 
-// Route 3 : Get all the slot using : POST "/user/booking/getslots"
+// Route 3 : Get all booked dates using : GET "/user/booking/getslots"
 router.get("/getslots", async (req, res) => {
   let success = false;
   try {
-    const slots = await Booking.find();
-
-    const date = new Date();
-
-    let data = await slots.filter((data) => {
-      return data.bookingdate > date.getTime();
-    });
-    data = data.map((data) => {
-      return data.bookingdate;
-    });
+    const slots = await getFutureBookings();
+    const data = slots.map((slot) => slot.bookingdate);
 
     success = true;
 
-    return res.status(200).json({ success, data: data });
+    return res.status(200).json({ success, data });
   } catch (err) {
-    res.status(500).send({ message: "Internal server error occured." });
+    res.status(500).json({ message: "Internal server error occurred." });
   }
 });
 
-// Route 4 : Get slot booking by the user using : POST "/user/booking/myslot"
+// Route 4 : Get slot booking by the user using : GET "/user/booking/myslot"
 router.get("/myslot", fetchuser, async (req, res) => {
   let success = false;
   try {
     const user = req.user;
     const slots = await Booking.find({ userId: user.id });
 
-    if (!slots) {
-      return res.status(500).json({ success });
-    }
-
     success = true;
     return res.status(200).json({ success, data: slots });
   } catch (err) {
-    res.status(500).send({ message: "Internal server error occured." });
+    res.status(500).json({ message: "Internal server error occurred." });
   }
 });
 

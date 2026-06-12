@@ -3,26 +3,24 @@ import express from "express";
 import { contactus } from "./sendmail.js";
 import Ratings from "../model/Ratings.js";
 import fetchuser from "../middleware/fetchuser.js";
+import validate from "../middleware/validate.js";
+import { contactRules, rateUsRules } from "../middleware/validators.js";
 
 dotenv.config();
 
 const router = express.Router();
-// const JWT_SECRET = process.env.JWT_SECRET;
 
-router.post("/mailus", async (req, res) => {
-  let success = false;
-
+router.post("/mailus", contactRules, validate, async (req, res) => {
   try {
     contactus(req, res);
   } catch (err) {
     res
       .status(500)
-      .send({ success, message: "Internal server error occured." });
+      .json({ success: false, message: "Internal server error occurred." });
   }
 });
 
-router.post("/rateus", fetchuser, async (req, res) => {
-  let success = false;
+router.post("/rateus", fetchuser, rateUsRules, validate, async (req, res) => {
   try {
     await Ratings.create({
       userId: req.user.id,
@@ -35,20 +33,19 @@ router.post("/rateus", fetchuser, async (req, res) => {
       .status(200)
       .json({ success: true, message: "Thanks for your feedback!" });
   } catch (err) {
-    res.status(500).send({ success, message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 router.get("/getrate", async (req, res) => {
-  let success = false;
   try {
     const ratings = await Ratings.find();
 
-    return res.status(200).json({ success: true, ratings: ratings });
+    return res.status(200).json({ success: true, ratings });
   } catch (err) {
     res
       .status(500)
-      .send({ success, message: "Internal server error occured." });
+      .json({ success: false, message: "Internal server error occurred." });
   }
 });
 

@@ -6,6 +6,8 @@ const UserSchema = new Schema({
     type: String,
     required: true,
     unique: true,
+    lowercase: true,
+    trim: true,
   },
   password: {
     type: String,
@@ -14,6 +16,7 @@ const UserSchema = new Schema({
   type: {
     type: String,
     required: true,
+    enum: ["customer", "admin"],
   },
   isverified: {
     type: Boolean,
@@ -21,7 +24,8 @@ const UserSchema = new Schema({
   },
 });
 
+UserSchema.index({ email: 1 }, { unique: true });
+
 const User = mongoose.model("user", UserSchema);
-User.createIndexes();
 
 export default User;
