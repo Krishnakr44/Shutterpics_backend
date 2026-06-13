@@ -1,100 +1,80 @@
-import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import OTPVerification from "../model/OTP.js";
+import { sendMail } from "../utils/mailer.js";
+import {
+  otpEmail,
+  contactNotificationEmail,
+  bookingNotificationEmail,
+} from "../utils/emailTemplates.js";
 
 dotenv.config();
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "shutterpicsstudio@gmail.com",
-    pass: process.env.MAIL_PASS,
-  },
-});
+const OTP_TTL_MS = 2 * 60 * 1000;
+
+async function saveHashedOtp(email, secOTP) {
+  await OTPVerification.findOneAndUpdate(
+    { email },
+    {
+      email,
+      otp: secOTP,
+      timestamp: new Date(),
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+}
 
 async function sendOTP(req, res) {
+  const email = req.body.email?.toLowerCase().trim();
   const otp = `${Math.floor(1000 + Math.random() * 9000)}`;
-
-  const optGeneration = {
-    from: "shutterpicsstudio@gmail.com",
-    to: req.body.email,
-    subject: "ShutterPics : Verify your account!",
-    html: `<p>OTP for verification at shutterpics.in is : <b>${otp}</b>.<br>This code is expires within 2 minutes.</p>`,
-  };
+  const purpose = req.originalUrl?.includes("resetpassword")
+    ? "password reset"
+    : "account verification";
+  const { subject, text, html } = otpEmail(otp, purpose);
 
   try {
-    // Securing OTP
     const salt = await bcrypt.genSalt(10);
     const secOTP = await bcrypt.hash(otp, salt);
 
-    let user = await OTPVerification.findOne({ email: req.body.email });
-    if (user) {
-      const currDate = new Date();
-
-      const newOTP = {
-        email: req.body.email,
-        otp: secOTP,
-        timestamp: new Date(currDate.getTime()),
-      };
-
-      await OTPVerification.findOneAndUpdate(
-        { email: req.body.email },
-        { $set: newOTP },
-        { new: true }
-      );
-      await transporter.sendMail(optGeneration);
-
-      return res.status(201).json({
-        success: true,
-        message: "OTP has been send successfully",
-      });
-    }
-
-    await OTPVerification.create({
-      email: req.body.email,
-      otp: secOTP,
+    await saveHashedOtp(email, secOTP);
+    await sendMail({
+      to: email,
+      subject,
+      text,
+      html,
     });
-
-    await transporter.sendMail(optGeneration);
 
     return res.status(201).json({
       success: true,
-      message: "OTP has been send successfully",
+      message: "OTP has been sent successfully",
     });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({
       success: false,
-      message: "Server error occured, Please try again!",
+      message: "Server error occurred. Please try again!",
     });
   }
 }
 
 export async function contactus(req, res) {
-  const message = `<p>Someone wanna contact you<br>Following are the details for that person.<br><br>
-    <b>Name : </b>${req.body.name} <br>
-    <b>Contact No : </b>${req.body.contactnum} <br>
-    <b>E-mail address : </b>${req.body.email} <br>
-    <b>Address : </b>${req.body.address} <br>
-    <b>Message : </b>${req.body.message} <br>
-    </p>
-    `;
-
-  const contactDetails = {
-    from: "shutterpicsstudio@gmail.com",
-    to: "shutterpicsstudio@gmail.com",
-    subject: "ShutterPics : Someone wanna contact you!",
-    html: message,
-  };
+  const { subject, text, html } = contactNotificationEmail(req.body);
 
   try {
-    await transporter.sendMail(contactDetails);
+    await sendMail({
+      to: process.env.MAIL_USER,
+      replyTo: req.body.email,
+      subject,
+      text,
+      html,
+    });
 
     return res.status(201).json({
       success: true,
       message: "Thank you! We will contact you soon",
     });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({
       success: false,
       message: "Server error, Unable to send message",
@@ -103,38 +83,31 @@ export async function contactus(req, res) {
 }
 
 export async function bookingmail(req, res) {
-  const date = new Date(req.body.bookingdate);
-
-  let message = `<p>Someone wanna book the date.<br>Following are the details for that person.<br><br>
-    <b>Name : </b>${req.body.name} <br>
-    <b>Contact No : </b>${req.body.contactnum} <br>
-    <b>Address : </b>${req.body.address} <br><br>
-    <b>Booking Date : </b>${date.getDate()}/${date.getMonth()}/${date.getFullYear()} <br>
-    <b>Event : </b>${req.body.eventname} <br>
-    <b>Time Slot : </b>${req.body.timeslot} <br>
-    </p>
-    `;
-
-  const contactDetails = {
-    from: "shutterpicsstudio@gmail.com",
-    to: "shutterpicsstudio@gmail.com",
-    subject: "ShutterPics : Someone wanna book the date!",
-    html: message,
-  };
+  const { subject, text, html } = bookingNotificationEmail(req.body);
 
   try {
-    await transporter.sendMail(contactDetails);
+    await sendMail({
+      to: process.env.MAIL_USER,
+      subject,
+      text,
+      html,
+    });
 
     return res.status(201).json({
       success: true,
       message: "Thank you! We will contact you soon",
     });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({
       success: false,
       message: "Server error, Unable to send message",
     });
   }
+}
+
+export function isOtpValid(storedTimestamp) {
+  return Date.now() <= new Date(storedTimestamp).getTime() + OTP_TTL_MS;
 }
 
 export default sendOTP;
